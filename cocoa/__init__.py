@@ -1,7 +1,10 @@
 """ Main engines. """
 import json
 from pathlib import Path
-from typing import Union
+from typing import Tuple, Union
+import matplotlib.pyplot as plt
+from matplotlib.pyplot import Figure, Axes
+from matplotlib.patches import Rectangle
 import pandas as pd
 from PIL.Image import Image
 import torch
@@ -102,3 +105,29 @@ class ObjDetDataset:
         if as_pil:
             img = ToPILImage()(img)
         return img
+
+    def plot_samp(self, samp: int, alpha: float = 0.2) -> Tuple[Figure, Axes]:
+        """
+        Plot sample image with bounding box overlays.
+
+        Args:
+            samp:  sample number
+            alpha: transparency value for bounding boxes
+
+        Returns: plot figure, plot axes
+        """
+        fig, axes = plt.subplots()
+        axes.imshow(self.get_image(samp, True))
+        for box in self.get_boxes(samp):
+            axes.add_patch(
+                Rectangle(
+                    xy=box[:2],
+                    width=box[2],
+                    height=box[3],
+                    facecolor='r',
+                    edgecolor='w',
+                    linewidth=2,
+                    alpha=alpha
+                )
+            )
+        return fig, axes
