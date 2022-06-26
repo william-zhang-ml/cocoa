@@ -84,9 +84,18 @@ class ObjDetDataset:
 
         Returns: bounding boxes (shape ? x 4)
         """
-        # pylint: disable=no-member
-        return torch.tensor(self.annotations.bbox.loc[samp].tolist())
-        # pylint: enable=no-member
+        try:
+            boxes = self.annotations.bbox.loc[samp]
+            if isinstance(boxes, pd.Series):
+                boxes = boxes.tolist()
+            # pylint: disable=no-member
+            boxes = torch.tensor(boxes)
+            # pylint: enable=no-member
+        except KeyError:
+            # pylint: disable=no-member
+            boxes = torch.zeros(0, 4)  # sample has no bounding boxes
+            # pylint: enable=no-member
+        return boxes
 
     def get_image(self,
                   samp: int,
