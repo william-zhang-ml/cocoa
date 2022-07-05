@@ -174,7 +174,10 @@ class ObjDetDataset:
             # pylint: enable=no-member
         return labels.long()  # cast for safety, will not cast if correct type
 
-    def plot_samp(self, samp: int, alpha: float = 0.2) -> Tuple[Figure, Axes]:
+    def plot_samp(self,
+                  samp: int,
+                  size: Tuple[int, int] = None,
+                  alpha: float = 0.2) -> Tuple[Figure, Axes]:
         """
         Plot sample image with bounding box overlays.
 
@@ -184,9 +187,19 @@ class ObjDetDataset:
 
         Returns: plot figure, plot axes
         """
+        img = self.get_image(samp, True)
+        if size is None:
+            boxes = self.get_boxes(samp)
+        else:
+            img = img.resize(size)
+            boxes = self.get_normalized_boxes(samp)
+            boxes[:, 0] *= size[0]
+            boxes[:, 1] *= size[1]
+            boxes[:, 2] *= size[0]
+            boxes[:, 3] *= size[1]
         fig, axes = plt.subplots()
-        axes.imshow(self.get_image(samp, True))
-        for box in self.get_boxes(samp):
+        axes.imshow(img)
+        for box in boxes:
             axes.add_patch(
                 Rectangle(
                     xy=box[:2],
