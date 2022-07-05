@@ -109,7 +109,7 @@ class ObjDetDataset:
             # pylint: disable=no-member
             boxes = torch.zeros(0, 4)  # sample has no bounding boxes
             # pylint: enable=no-member
-        return boxes
+        return boxes.float()  # cast for safety, will not cast if correct type
 
     def get_normalized_boxes(self, samp: int) -> Tensor:
         """
@@ -132,7 +132,28 @@ class ObjDetDataset:
             # pylint: disable=no-member
             boxes = torch.zeros(0, 4)  # sample has no bounding boxes
             # pylint: enable=no-member
-        return boxes
+        return boxes.float()  # cast for safety, will not cast if correct type
+
+    def get_labels(self, samp: int) -> Tensor:
+        """
+        Get object labels.
+
+        Args:
+            samp: sample number
+
+        Returns: bounding box labels (shape ?)
+        """
+        try:
+            # below indexing needed so 1 box vs many box case gives same type
+            labels = self.annotations.loc[samp:samp]['category_id'].values - 1
+            # pylint: disable=no-member
+            labels = torch.tensor(labels)
+            # pylint: enable=no-member
+        except KeyError:
+            # pylint: disable=no-member
+            labels = torch.zeros(0)  # sample has no bounding boxes
+            # pylint: enable=no-member
+        return labels.long()  # cast for safety, will not cast if correct type
 
     def get_image(self,
                   samp: int,
