@@ -77,18 +77,37 @@ class ObjDetDataset:
         """ Returns: number of images in dataset. """
         return self.n_images
 
-    def __getitem__(self, samp: int):
+    def __getitem__(self, samp: int) -> Tuple[Tensor, Tensor, Tensor]:
         """
         Get a dataset sample.
 
         Args:
             samp: sample_number
 
-        Returns: sample image, sample bounding boxes
+        Returns: sample image, normalized bounding boxes, and labels
         """
-        boxes = self.get_boxes(samp)
         img = self.get_image(samp)
-        return img, boxes
+        boxes = self.get_normalized_boxes(samp)
+        labels = self.get_labels(samp)
+        return img, boxes, labels
+
+    def get_image(self,
+                  samp: int,
+                  as_pil: bool = False) -> Union[Tensor, Image]:
+        """
+        Get image.
+
+        Args:
+            samp:   sample number
+            as_pil: toggles return type b/w torch tensor or pillow image
+
+        Returns: image
+        """
+        file_name = self.images.file_name.loc[samp]
+        img = read_image(str(self.image_path / file_name))
+        if as_pil:
+            img = ToPILImage()(img)
+        return img
 
     def get_boxes(self, samp: int) -> Tensor:
         """
@@ -154,24 +173,6 @@ class ObjDetDataset:
             labels = torch.zeros(0)  # sample has no bounding boxes
             # pylint: enable=no-member
         return labels.long()  # cast for safety, will not cast if correct type
-
-    def get_image(self,
-                  samp: int,
-                  as_pil: bool = False) -> Union[Tensor, Image]:
-        """
-        Get image.
-
-        Args:
-            samp:   sample number
-            as_pil: toggles return type b/w torch tensor or pillow image
-
-        Returns: image
-        """
-        file_name = self.images.file_name.loc[samp]
-        img = read_image(str(self.image_path / file_name))
-        if as_pil:
-            img = ToPILImage()(img)
-        return img
 
     def plot_samp(self, samp: int, alpha: float = 0.2) -> Tuple[Figure, Axes]:
         """
