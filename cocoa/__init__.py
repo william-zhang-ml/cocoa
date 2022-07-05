@@ -5,6 +5,7 @@ from typing import Tuple, Union
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import Figure, Axes
 from matplotlib.patches import Rectangle
+import numpy as np
 import pandas as pd
 from PIL.Image import Image
 import torch
@@ -49,6 +50,20 @@ class ObjDetDataset:
         images['samp'] = images.id.map(img_to_samp)
         images = images.set_index('samp').sort_index()
 
+        # normalize bounding box with respect to size of image
+        image_width = annot.index.map(images.width)
+        image_height = annot.index.map(images.height)
+        boxes = np.stack(annot.bbox)
+        annot['x1'] = boxes[:, 0] / image_width
+        annot['y1'] = boxes[:, 1] / image_height
+        annot['width'] = boxes[:, 2] / image_width
+        annot['height'] = boxes[:, 3] / image_height
+
+        # cast
+        for col in annot:
+            if annot.dtypes[col] == np.float64:
+                annot[col] = annot[col].astype(np.float32)
+
         # assign to attributes
         self.image_path = Path(image_path)
         self.img_to_samp = img_to_samp
@@ -85,11 +100,33 @@ class ObjDetDataset:
         Returns: bounding boxes (shape ? x 4)
         """
         try:
-            boxes = self.annotations.bbox.loc[samp]
-            if isinstance(boxes, pd.Series):
-                boxes = boxes.tolist()
+            # below indexing needed so 1 box vs many box case gives same type
+            boxes = self.annotations.loc[samp:samp]['bbox'].tolist()
             # pylint: disable=no-member
-            boxes = torch.tensor(boxes)
+            boxes = torch.tensor(boxes).view(-1, 4)
+            # pylint: enable=no-member
+        except KeyError:
+            # pylint: disable=no-member
+            boxes = torch.zeros(0, 4)  # sample has no bounding boxes
+            # pylint: enable=no-member
+        return boxes
+
+    def get_normalized_boxes(self, samp: int) -> Tensor:
+        """
+        Get object bounding boxes normalized with respect to image size.
+
+        Args:
+            samp: sample number
+
+        Returns: bounding boxes (shape ? x 4)
+        """
+        try:
+            # below indexing needed so 1 box vs many box case gives same type
+            boxes = self.annotations.loc[samp:samp][
+                ['x1', 'y1', 'width', 'height']
+            ].values
+            # pylint: disable=no-member
+            boxes = torch.tensor(boxes).view(-1, 4)
             # pylint: enable=no-member
         except KeyError:
             # pylint: disable=no-member
